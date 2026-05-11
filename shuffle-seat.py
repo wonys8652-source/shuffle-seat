@@ -721,6 +721,34 @@ def manage_students(add_n, upload, del_n, edit_n, save_n, in_nos, in_names, in_g
     return new_list, create_table("남"), create_table("여"), f"남학생 - {len([s for s in new_list if s['성별']=='남'])}명", f"여학생 - {len([s for s in new_list if s['성별']=='여'])}명", next_edit_idx, None, "", None, None
 
 @app.callback(
+    Output("download-template", "data"),
+    Input("btn-download", "n_clicks"),
+    State('stored-data', 'data'),
+    prevent_initial_call=True
+)
+def download_template(n, students):
+    """메모리에서 직접 엑셀 파일 생성 (Render.com 호환)"""
+    if not students:
+        # 빈 데이터일 경우 기본 양식 제공
+        df = pd.DataFrame({
+            "번호": [1, 2, 3],
+            "이름": ["학생1", "학생2", "학생3"],
+            "성별": ["남", "여", "남"]
+        })
+    else:
+        # 실제 학생 데이터 사용
+        df = pd.DataFrame(students)
+    
+    # BytesIO를 사용하여 메모리에 파일 생성 (디스크 쓰기 불필요)
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+        df.to_excel(writer, sheet_name='학생명단', index=False)
+    buffer.seek(0)
+    
+    # Dash의 send_bytes로 메모리에서 직접 반환 (Render.com 호환)
+    return dcc.send_bytes(buffer.getvalue(), "학생명단.xlsx")
+
+@app.callback(
     Output('selected-group-count', 'data'),
     Output({'type': 'group-select-box', 'index': ALL}, 'className'),
     Input({'type': 'group-select-box', 'index': ALL}, 'n_clicks'),
