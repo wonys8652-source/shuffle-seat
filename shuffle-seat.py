@@ -164,6 +164,10 @@ app.layout = html.Div([
                     dbc.Button("⛔ 규칙 설정 (기피)", id="open-rules-mgr-btn", 
                                className="btn w-100 mb-2 shadow-sm sidebar-btn",      # 💡 sidebar-btn 추가!
                                style={"backgroundColor": "var(--btn-bg)", "color": "var(--btn-text)", "border": "1px solid var(--btn-border)", "textAlign": "left", "padding": "12px 15px", "borderRadius": "8px"}),        
+                    
+                    dbc.Button("💾 배치 결과 관리", id="open-seating-result-btn", 
+                               className="btn w-100 mb-2 shadow-sm sidebar-btn",
+                               style={"backgroundColor": "var(--btn-bg)", "color": "var(--btn-text)", "border": "1px solid var(--btn-border)", "textAlign": "left", "padding": "12px 15px", "borderRadius": "8px"}),
                 ]),
                 
                 html.Div(id="alert-container", className="mt-3"),
@@ -472,7 +476,30 @@ dbc.Modal([
     dcc.Store(id='special-rules-store', data={'no_pair': [], 'no_cluster': []}, storage_type='local'),  # 특별 규칙 (영구 저장)
     dcc.Store(id='temp-cluster-selection', data=[]),
     dcc.Store(id='print-html-store', data=""),
+    dcc.Store(id='seating-results-store', data=[], storage_type='local'),  # 저장된 자리 배치 결과 (영구 저장)
+    dcc.Store(id='current-seating-result', data=None),  # 현재 배치 결과
     dcc.Download(id="download-template"),
+    dcc.Download(id="download-seating-backup"),
+
+# [팝업 7-1] 자리 배치 결과 저장 모달
+dbc.Modal([
+    dbc.ModalHeader(dbc.ModalTitle("💾 자리 배치 결과 저장")),
+    dbc.ModalBody([
+        html.P("현재 배치 결과를 저장하시겠습니까?", className="mb-3"),
+        dbc.Label("저장 이름 (선택사항):", className="fw-bold mb-2"),
+        dbc.Input(id="seating-save-name", placeholder="예: 2024년 5월 배치", type="text", className="mb-3"),
+        html.Hr(),
+        html.Div([
+            html.P("💡 저장된 배치 목록:", className="fw-bold mb-2"),
+            html.Div(id="seating-results-list", style={"maxHeight": "200px", "overflowY": "auto", "border": "1px solid #ddd", "borderRadius": "5px", "padding": "10px"})
+        ], className="mb-3"),
+    ]),
+    dbc.ModalFooter([
+        dbc.Button("저장하기", id="save-seating-result-btn", color="success", className="me-2"),
+        dbc.Button("다운로드 백업", id="backup-seating-btn", color="info", className="me-2"),
+        dbc.Button("취소", id="cancel-save-seating-btn", color="secondary"),
+    ]),
+], id="seating-save-modal", is_open=False, backdrop="static"),
 
 # [팝업 8] 인쇄 설정 모달
 dbc.Modal([
@@ -1941,6 +1968,149 @@ app.clientside_callback(
     Output("blank-output", "children"),
     Input("theme-switch", "value")
 )
+
+# --- [자리 배치 결과 저장 기능] ---
+@app.callback(
+    Output('seating-save-modal', 'is_open'),
+    Output('current-seating-result', 'data'),
+    Input('assigned-map-store', 'data'),
+    State('seating-save-modal', 'is_open'),
+    prevent_initial_call=True
+)
+def show_seating_save_modal(assigned_map, is_open):
+    """자리 배치 완료 시 저장 모달 자동 표시"""
+    if not assigned_map or assigned_map == {}:
+        return dash.no_update, dash.no_update
+    # 모달 열기 + 현재 배치 결과 저장
+    return True, assigned_map
+
+# 저장된 배치 목록 표시
+@app.callback(
+    Output('seating-results-list', 'children'),
+    Input('seating-results-store', 'data')
+)
+def update_seating_results_list(results):
+    """저장된 배치 결과 목록 표시"""
+    if not results:
+        return dbc.Alert("저장된 배치가 없습니다.", color="info", className="mb-0")
+    
+    items = []
+    for idx, result in enumerate(results):
+        name = result.get('name', f'배치 {idx+1}')
+        timestamp = result.get('timestamp', 'N/A')
+        items.append(
+            dbc.Card([
+                dbc.CardBody([
+                    html.H6(name, className="mb-1"),
+                    html.Small(timestamp, className="text-muted"),
+                    dbc.Button("불러오기", id={'type': 'load-seating-btn', 'index': idx}, 
+                              color="info", size="sm", className="mt-2 me-2"),
+                    dbc.Button("삭제", id={'type': 'delete-seating-btn', 'index': idx}, 
+                              color="danger", size="sm", className="mt-2"),
+                ])
+            ], className="mb-2", style={"backgroundColor": "var(--card-bg)"})
+        )
+    return items
+
+# 저장하기 클릭
+@app.callback(
+    Output('seating-results-store', 'data'),
+    Output('seating-save-modal', 'is_open'),
+    Input('save-seating-result-btn', 'n_clicks'),
+    [State('seating-results-store', 'data'),
+     State('current-seating-result', 'data'),
+     State('seating-save-name', 'value')],
+    prevent_initial_call=True
+)
+def save_seating_result(n_clicks, results, current_result, save_name):
+    """현재 배치 결과를 저장소에 저장"""
+    import datetime
+    if not current_result:
+        raise PreventUpdate
+    
+    results = results or []
+    new_result = {
+        'data': current_result,
+        'name': save_name or f"배치 {len(results)+1}",
+        'timestamp': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+    results.append(new_result)
+    return results, False
+
+# 취소 버튼
+@app.callback(
+    Output('seating-save-modal', 'is_open'),
+    Input('cancel-save-seating-btn', 'n_clicks'),
+    prevent_initial_call=True
+)
+def close_seating_modal(n_clicks):
+    return False
+
+# 백업 다운로드
+@app.callback(
+    Output('download-seating-backup', 'data'),
+    Input('backup-seating-btn', 'n_clicks'),
+    State('seating-results-store', 'data'),
+    prevent_initial_call=True
+)
+def download_seating_backup(n_clicks, results):
+    """저장된 모든 배치 결과를 JSON으로 다운로드"""
+    import json
+    import datetime
+    
+    backup_data = {
+        'backup_date': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        'results': results or []
+    }
+    return dict(content=json.dumps(backup_data, ensure_ascii=False, indent=2), filename="자리배치_백업.json")
+
+# 저장된 배치 불러오기
+@app.callback(
+    Output('assigned-map-store', 'data'),
+    Output('seating-save-modal', 'is_open'),
+    Input({'type': 'load-seating-btn', 'index': ALL}, 'n_clicks'),
+    State('seating-results-store', 'data'),
+    prevent_initial_call=True
+)
+def load_seating_result(n_clicks, results):
+    """저장된 배치 결과 불러오기"""
+    if not any(n_clicks):
+        raise PreventUpdate
+    
+    idx = ctx.triggered_id['index']
+    if idx < len(results):
+        loaded_result = results[idx]['data']
+        return loaded_result, False
+    raise PreventUpdate
+
+# 저장된 배치 삭제
+@app.callback(
+    Output('seating-results-store', 'data'),
+    Input({'type': 'delete-seating-btn', 'index': ALL}, 'n_clicks'),
+    State('seating-results-store', 'data'),
+    prevent_initial_call=True
+)
+def delete_seating_result(n_clicks, results):
+    """저장된 배치 결과 삭제"""
+    if not any(n_clicks):
+        raise PreventUpdate
+    
+    idx = ctx.triggered_id['index']
+    results = results or []
+    if idx < len(results):
+        results.pop(idx)
+    return results
+
+# 배치 결과 관리 버튼 (모달 열기)
+@app.callback(
+    Output('seating-save-modal', 'is_open'),
+    Input('open-seating-result-btn', 'n_clicks'),
+    State('seating-save-modal', 'is_open'),
+    prevent_initial_call=True
+)
+def toggle_seating_result_modal(n_clicks, is_open):
+    """배치 결과 관리 모달 열기/닫기"""
+    return not is_open
 
 # ─────────────────────────────────────────────────────────────
 # [서버 실행] 반드시 파일의 "맨 마지막"에 위치!
