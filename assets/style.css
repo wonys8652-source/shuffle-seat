@@ -1,0 +1,470 @@
+/* -----------------------------------------
+   [추가] 라이트/다크 모드 변수 정의 (최상단에 추가)
+----------------------------------------- */
+:root,
+[data-bs-theme="light"],
+[data-theme="light"] {
+    --modal-bg: #ffffff;       /* 모달 배경: 하얀색 */
+    --text-color: #212529;     /* 글자색: 어두운 회색 (거의 검정) */
+    --border-color: #dee2e6;   /* 테두리색: 연한 회색 */
+}
+
+/* 다크 모드 */
+[data-bs-theme="dark"],
+[data-theme="dark"],
+html[data-theme="dark"],
+body.dark,
+.dark-mode,
+.dark-theme {
+    --modal-bg: #2b3035;       /* 모달 배경: 어두운 회색 */
+    --text-color: #f8f9fa;     /* 글자색: 밝은 하얀색 */
+    --border-color: #495057;   /* 테두리색: 약간 어두운 회색 */
+}
+
+/* 1. 사이드바 메뉴 호버(마우스 오버) 효과 */
+.sidebar-btn {
+    transition: background-color 0.2s ease, transform 0.1s ease !important;
+}
+.sidebar-btn:hover {
+    background-color: var(--btn-hover-bg) !important;
+    transform: scale(1.02);
+}
+
+/* -----------------------------------------
+   [수정] 2. 모달 전체 기본 테마
+----------------------------------------- */
+.modal-content {
+    /* var(변수명, 기본값) 형태로 작성하여 변수가 작동하지 않아도 하얀색 배경이 나오게 방어 */
+    background-color: var(--modal-bg, #ffffff) !important;
+    color: var(--text-color, #212529) !important;
+    border: 1px solid var(--border-color, #dee2e6) !important;
+}
+.modal-header, .modal-footer {
+    border-color: var(--border-color, #dee2e6) !important;
+}
+
+/* 3. 파이썬 코드에 하드코딩된 bg-light (밝은 배경) 강제 덮어쓰기 */
+.bg-light {
+    background-color: var(--input-bg) !important;
+    color: var(--text-color) !important;
+}
+
+/* 4. 카드 및 리스트 박스 배경 (학생 명단 추가 박스 등) */
+.card, .card-header, .card-body, .list-group-item {
+    background-color: var(--input-bg) !important;
+    color: var(--text-color) !important;
+    border-color: var(--border-color) !important;
+}
+
+/* 5. 학생 명단 테이블 테마 (글자색 및 선 색상) */
+.table {
+    color: var(--text-color) !important;
+    border-color: var(--border-color) !important;
+}
+.table th, .table td {
+    color: var(--text-color) !important;
+    background-color: transparent !important;
+}
+/* 테이블에 마우스를 올렸을 때 행 하이라이트 */
+.table-hover tbody tr:hover td {
+    background-color: var(--btn-hover-bg) !important;
+}
+
+/* 6. 부트스트랩 일반 입력창 (Input, Select) */
+.form-control, .form-select {
+    background-color: var(--input-bg) !important;
+    color: var(--text-color) !important;
+    border-color: var(--border-color) !important;
+}
+.form-control:focus, .form-select:focus {
+    background-color: var(--input-bg) !important;
+    color: var(--text-color) !important;
+}
+
+/* 7. 대시 코어 컴포넌트 (dcc.Dropdown - 규칙 설정 탭) 테마 */
+.Select-control, .Select-menu-outer, .Select-option {
+    background-color: var(--input-bg) !important;
+    color: var(--text-color) !important;
+    border-color: var(--border-color) !important;
+}
+.Select-value-label {
+    color: var(--text-color) !important;
+}
+.Select-option.is-focused, .Select-option.is-selected {
+    background-color: var(--btn-hover-bg) !important;
+}
+
+/* -----------------------------------------
+   [추가] 다크모드 시 dcc.Dropdown 색상 강제 교정
+----------------------------------------- */
+/* 다크모드 상태([data-bs-theme="dark"])일 때만 적용 */
+[data-bs-theme="dark"] .Select-control {
+    background-color: var(--input-bg, #2b3035) !important;
+    border-color: var(--border-color, #495057) !important;
+}
+
+[data-bs-theme="dark"] .Select-value-label {
+    color: var(--text-color, #f8f9fa) !important;
+}
+
+[data-bs-theme="dark"] .Select-menu-outer {
+    background-color: var(--input-bg, #2b3035) !important;
+    border-color: var(--border-color, #495057) !important;
+}
+
+[data-bs-theme="dark"] .Select-option {
+    background-color: var(--input-bg, #2b3035) !important;
+    color: var(--text-color, #f8f9fa) !important;
+}
+
+[data-bs-theme="dark"] .Select-option.is-focused {
+    background-color: var(--btn-hover-bg, #3e444a) !important;
+}
+
+/* 드롭다운 화살표 및 안내 문구 색상 */
+[data-bs-theme="dark"] .Select-placeholder,
+[data-bs-theme="dark"] .Select-arrow-zone {
+    color: var(--text-color, #f8f9fa) !important;
+    opacity: 0.6;
+}
+
+/* 다크모드 시 dcc.Dropdown 스타일 교정 */
+[data-bs-theme="dark"] .Select-control,
+[data-bs-theme="dark"] .Select-menu-outer,
+[data-bs-theme="dark"] .VirtualizedSelectOption {
+    background-color: var(--input-bg, #2b3035) !important;
+    color: var(--text-color, #f8f9fa) !important;
+    border-color: var(--border-color, #495057) !important;
+}
+
+[data-bs-theme="dark"] .Select-value-label,
+[data-bs-theme="dark"] .VirtualizedSelectFocusedOption {
+    color: var(--text-color, #f8f9fa) !important;
+}
+
+/* ============================================================
+   [최종 해결] 모든 모달 및 메뉴 내 드롭다운 다크모드 강제 적용
+   ============================================================ */
+
+/* 1. 드롭다운 전체 배경 및 테두리 */
+[data-bs-theme="dark"] .Select-control,
+[data-bs-theme="dark"] .Select-menu-outer {
+    background-color: var(--input-bg, #2b3035) !important;
+    border-color: var(--border-color, #495057) !important;
+    color: var(--text-color, #f8f9fa) !important;
+}
+
+/* 2. 선택된 값의 글자색 */
+[data-bs-theme="dark"] .Select-value-label {
+    color: var(--text-color, #f8f9fa) !important;
+}
+
+/* 3. 드롭다운 내부 입력창(검색 시) 글자색 */
+[data-bs-theme="dark"] .Select-input > input {
+    color: var(--text-color, #f8f9fa) !important;
+}
+
+/* 4. 드롭다운 옵션 리스트 (각 항목) */
+[data-bs-theme="dark"] .VirtualizedSelectOption,
+[data-bs-theme="dark"] .Select-option {
+    background-color: var(--input-bg, #2b3035) !important;
+    color: var(--text-color, #f8f9fa) !important;
+}
+
+/* 5. 마우스를 올렸을 때(호버) 항목 배경색 */
+[data-bs-theme="dark"] .VirtualizedSelectFocusedOption,
+[data-bs-theme="dark"] .Select-option.is-focused {
+    background-color: var(--btn-hover-bg, #3e444a) !important;
+    color: var(--text-color, #f8f9fa) !important;
+}
+
+/* 6. 안내 문구(Placeholder) 색상 */
+[data-bs-theme="dark"] .Select-placeholder {
+    color: var(--text-color, #f8f9fa) !important;
+    opacity: 0.5 !important;
+}
+
+/* ============================================================
+   [추가] dbc.Select (성별 선택, 고정석 학생 선택 등) 다크모드 적용
+   ============================================================ */
+[data-bs-theme="dark"] .form-select {
+    background-color: #2b3035 !important;
+    color: #f8f9fa !important;
+    border-color: #495057 !important;
+}
+
+/* 드롭다운 클릭 시 아래로 펼쳐지는 선택지(Option) 배경색 */
+[data-bs-theme="dark"] .form-select option {
+    background-color: #2b3035 !important;
+    color: #f8f9fa !important;
+}
+
+/* 선택 창에 마우스를 올리거나 클릭했을 때 테두리 색상 */
+[data-bs-theme="dark"] .form-select:focus {
+    background-color: #2b3035 !important;
+    border-color: #0d6efd !important;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+}
+
+/* ============================================================
+   [최강력 적용] 밀집 방지 규칙 드롭다운 (ID 직접 타겟팅)
+   ============================================================ */
+
+/* 1. 드롭다운 입력창 전체 높이 강제 늘리기 */
+#no-cluster-select .Select-control {
+    min-height: 100px !important;
+    display: flex !important;
+    align-items: flex-start !important;
+    padding-top: 5px !important;
+}
+
+/* 2. 이름표(태그) 배경: 밝은 하늘색, 글자: 진한색으로 강제 변경 */
+[data-bs-theme="dark"] #no-cluster-select .Select-value {
+    background-color: #90caf9 !important; 
+    color: #212529 !important;            
+    border: 1px solid #42a5f5 !important;
+    font-weight: 600 !important;          
+    font-size: 14px !important;           
+    margin: 5px !important;               
+}
+
+/* 3. 태그 내부 실제 글씨 색상 */
+[data-bs-theme="dark"] #no-cluster-select .Select-value-label {
+    color: #212529 !important; 
+}
+
+/* 4. 태그 왼쪽의 'x' 삭제 버튼 색상 및 테두리 */
+[data-bs-theme="dark"] #no-cluster-select .Select-value-icon {
+    border-right: 1px solid rgba(0, 0, 0, 0.2) !important;
+    color: #212529 !important;
+    background-color: transparent !important;
+}
+
+/* 5. 'x' 삭제 버튼에 마우스 올렸을 때 */
+[data-bs-theme="dark"] #no-cluster-select .Select-value-icon:hover {
+    background-color: #dc3545 !important;
+    color: white !important;
+}
+
+/* 박스 상하 길이 100px로 늘리기 */
+#no-cluster-select .Select-control {
+    min-height: 100px !important;
+}
+
+/* 이름표(태그) 색상: 밝은 하늘색 바탕 + 진한 글씨 */
+[data-bs-theme="dark"] #no-cluster-select .Select-value {
+    background-color: #90caf9 !important;
+    color: #000000 !important;
+    border: 1px solid #42a5f5 !important;
+    font-weight: bold !important;
+    font-size: 14px !important;
+    margin: 4px !important;
+}
+
+/* 이름표 안의 실제 글자색 강제 적용 */
+[data-bs-theme="dark"] #no-cluster-select .Select-value-label {
+    color: #000000 !important;
+}
+
+/* 이름표 왼쪽의 'x' 버튼 색상 */
+[data-bs-theme="dark"] #no-cluster-select .Select-value-icon {
+    color: #000000 !important;
+    border-right: 1px solid rgba(0,0,0,0.3) !important;
+}
+
+/* 'x' 버튼에 마우스 올렸을 때 빨간색 */
+[data-bs-theme="dark"] #no-cluster-select .Select-value-icon:hover {
+    background-color: #dc3545 !important;
+    color: white !important;
+}
+
+/* shuffle-seat.py의 style 속성 대신 css 파일에 넣어두면 관리가 편합니다. */
+#cluster-selection-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); /* 화면 크기에 맞게 자동 조절 */
+    gap: 8px;
+    padding: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+/* 선택된 버튼에 애니메이션 살짝 추가 */
+#cluster-selection-grid .btn-primary {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+/* 버튼 클릭 시 생기는 잔상 및 포커스 테두리 제거 */
+.btn:focus, .btn:active {
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+/* 그리드 안의 버튼들에 부드러운 전환 효과 */
+#cluster-selection-grid .btn {
+    transition: background-color 0.15s ease-in-out, transform 0.1s ease;
+}
+
+/* 버튼 클릭 전후에 생기는 푸른색 테두리(포커스) 강제 제거 */
+#cluster-selection-grid .btn:focus,
+#cluster-selection-grid .btn:active,
+#cluster-selection-grid .btn:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+    /* 포커스 되었을 때 배경색이 변하지 않도록 설정 */
+}
+
+/* 텍스트 선택(드래그) 방지 - 버튼 클릭 시 깔끔하게 보임 */
+#cluster-selection-grid .btn {
+    user-select: none;
+}
+
+
+/* -----------------------------------------
+   [수정] 햄버거 버튼 마우스 호버 시 원형 배경 효과 및 글자 맨 앞으로
+----------------------------------------- */
+#toggle-sidebar-btn {
+    transition: background-color 0.2s ease-in-out !important;
+    position: relative; /* z-index 적용을 위해 필요 */
+    z-index: 1050 !important; /* 버튼 자체를 맨 앞으로 */
+}
+
+#toggle-sidebar-btn:hover {
+    background-color: rgba(128, 128, 128, 0.2) !important; 
+    color: var(--text-color, #333) !important; /* 호버 시 글자색이 투명해지거나 변하는 것 방지 */
+    text-decoration: none !important; /* 밑줄 생기는 것 방지 */
+}
+
+/* --- 분단 선택 박스 (1~6분단 Div) 호버 효과 --- */
+/* ID에 'group-select-box'가 포함된 모든 Div를 찾아 호버 효과 적용 */
+div[id*='group-select-box'] {
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+div[id*='group-select-box']:hover {
+    background-color: rgba(0, 0, 0, 0.05) !important; /* 연한 회색 음영 */
+    border-color: #adb5bd !important; /* 테두리도 살짝 진하게 */
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* 다크모드일 때 분단 박스 호버 효과 */
+[data-bs-theme='dark'] div[id*='group-select-box']:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important; /* 밝은 쪽으로 음영 */
+    border-color: #6c757d !important;
+}
+
+
+/* --- 설정 완료 버튼 호버 효과 --- */
+#group-mgr-close-btn {
+    transition: filter 0.2s ease;
+}
+
+#group-mgr-close-btn:hover {
+    filter: brightness(0.9); /* 버튼을 10% 정도 어둡게 하여 음영 표현 */
+}
+
+/* -----------------------------------------
+   [추가] 햄버거 버튼 테마별 색상 강제 지정
+----------------------------------------- */
+/* 라이트모드에서의 색상 */
+#toggle-sidebar-btn {
+    color: #333 !important; 
+}
+
+/* 다크모드([data-bs-theme='dark'])에서의 색상 */
+[data-bs-theme='dark'] #toggle-sidebar-btn {
+    color: #ffffff !important; /* 💡 완전한 흰색으로 변경 */
+    /* 혹은 약간 푸른 빛이 도는 밝은 색을 원하면 #e3f2fd */
+}
+
+/* 호버 시에도 색상이 유지되도록 설정 */
+#toggle-sidebar-btn:hover {
+    text-decoration: none !important;
+}
+
+/* -----------------------------------------
+   분단 묶음(박스) 배경 색상 설정
+----------------------------------------- */
+/* 1. 라이트 모드 (기본) - 아주 연한 회색/베이지 느낌으로 부드럽게 */
+.cluster-box {
+    background-color: #f1f3f5 !important; 
+    transition: background-color 0.3s ease; 
+}
+
+/* 2. 다크 모드 - 눈이 아프지 않은 차분한 진회색 */
+[data-bs-theme='dark'] .cluster-box {
+    background-color: #343a40 !important; 
+    border-color: #495057 !important; 
+}
+
+/* -----------------------------------------
+   [추가] 책상 마우스 호버(음영 및 입체감) 효과
+----------------------------------------- */
+.seat-hover-effect {
+    /* 마우스를 올리고 내릴 때 애니메이션이 부드럽게 작동하도록 설정 */
+    transition: box-shadow 0.2s ease, transform 0.2s ease !important;
+}
+
+.seat-hover-effect:hover {
+    /* 마우스를 올렸을 때 살짝 진해지는 그림자 효과 */
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15) !important; 
+    /* 살짝 위로 떠오르는 느낌 (원치 않으시면 이 줄은 지우셔도 됩니다) */
+    transform: translateY(-3px); 
+    /* 다른 책상에 가려지지 않도록 맨 앞으로 당겨옴 */
+    z-index: 10; 
+}
+
+/* 다크모드일 때는 배경이 어두우므로 그림자를 좀 더 진하게 줘서 눈에 띄게 만듭니다 */
+[data-bs-theme="dark"] .seat-hover-effect:hover {
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* -----------------------------------------
+   [추가] 분단 세부 설정(연필 아이콘) 호버 효과
+----------------------------------------- */
+.edit-icon-btn {
+    border-radius: 50% !important; 
+    
+    /* 💡 1. 원의 크기를 32px에서 26px 정도로 줄입니다 (원하는 크기로 조절 가능) */
+    width: 26px;                   
+    height: 26px;                  
+    
+    padding: 0 !important;         
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease, transform 0.2s ease !important; 
+}
+
+.edit-icon-btn:hover {
+    background-color: rgba(0, 0, 0, 0.1) !important; 
+    
+    /* 💡 2. 마우스를 올렸을 때 커지는 비율을 1.15에서 1.05 정도로 줄이거나 지웁니다 */
+    transform: scale(1.05); 
+}
+
+/* 다크모드 대응 */
+[data-bs-theme="dark"] .edit-icon-btn:hover {
+    background-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* -----------------------------------------
+   [추가] 자리 배치 스르륵 나타나는(Fade-in) 효과
+----------------------------------------- */
+/* 애니메이션 동작(Keyframes) 정의 */
+@keyframes smoothFadeIn {
+    0% {
+        opacity: 0;                  /* 처음엔 완전 투명하게 */
+        transform: translateY(10px); /* 원래 위치보다 10px 아래에 위치 */
+    }
+    100% {
+        opacity: 1;                  /* 마지막엔 완전 선명하게 */
+        transform: translateY(0);    /* 원래 제 위치로 돌아옴 */
+    }
+}
+
+/* 파이썬에서 지정한 클래스에 애니메이션 적용 */
+.fade-in-effect {
+    /* 0.6초 동안 부드럽게(ease-out) 애니메이션을 1번 실행하고 멈춤(forwards) */
+    animation: smoothFadeIn 1s ease-out forwards; 
+}
