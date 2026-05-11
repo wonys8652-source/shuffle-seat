@@ -497,7 +497,7 @@ dbc.Modal([
     dbc.ModalFooter([
         dbc.Button("저장하기", id="save-seating-result-btn", color="success", className="me-2"),
         dbc.Button("다운로드 백업", id="backup-seating-btn", color="info", className="me-2"),
-        dbc.Button("취소", id="cancel-save-seating-btn", color="secondary"),
+        dbc.Button("닫기", id="close-seating-modal-btn", color="secondary"),
     ]),
 ], id="seating-save-modal", is_open=False, backdrop="static"),
 
@@ -1970,19 +1970,7 @@ app.clientside_callback(
 )
 
 # --- [자리 배치 결과 저장 기능] ---
-@app.callback(
-    Output('seating-save-modal', 'is_open'),
-    Output('current-seating-result', 'data'),
-    Input('assigned-map-store', 'data'),
-    State('seating-save-modal', 'is_open'),
-    prevent_initial_call=True
-)
-def show_seating_save_modal(assigned_map, is_open):
-    """자리 배치 완료 시 저장 모달 자동 표시"""
-    if not assigned_map or assigned_map == {}:
-        return dash.no_update, dash.no_update
-    # 모달 열기 + 현재 배치 결과 저장
-    return True, assigned_map
+# 💡 자동 팝업 기능 제거됨
 
 # 저장된 배치 목록 표시
 @app.callback(
@@ -2018,7 +2006,7 @@ def update_seating_results_list(results):
     Output('seating-save-modal', 'is_open'),
     Input('save-seating-result-btn', 'n_clicks'),
     [State('seating-results-store', 'data'),
-     State('current-seating-result', 'data'),
+     State('assigned-map-store', 'data'),
      State('seating-save-name', 'value')],
     prevent_initial_call=True
 )
@@ -2037,10 +2025,10 @@ def save_seating_result(n_clicks, results, current_result, save_name):
     results.append(new_result)
     return results, False
 
-# 취소 버튼
+# 닫기 버튼
 @app.callback(
     Output('seating-save-modal', 'is_open'),
-    Input('cancel-save-seating-btn', 'n_clicks'),
+    Input('close-seating-modal-btn', 'n_clicks'),
     prevent_initial_call=True
 )
 def close_seating_modal(n_clicks):
