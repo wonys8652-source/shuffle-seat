@@ -459,16 +459,17 @@ dbc.Modal([
     
 
     # 상태 관리를 위한 Stores
-    dcc.Store(id='stored-data', data=[]),
+    # storage_type='local'을 사용하면 브라우저 캐시에 저장되어 새로고침/재접속 후에도 데이터 유지
+    dcc.Store(id='stored-data', data=[], storage_type='local'),  # 학생명단 (영구 저장)
     dcc.Store(id='edit-row-idx', data=None), 
-    dcc.Store(id='groups-config', data=[{"id": i, "rows": 5, "cols": 2, "seats": {}, "exclude": []} for i in range(1, 4)]),
+    dcc.Store(id='groups-config', data=[{"id": i, "rows": 5, "cols": 2, "seats": {}, "exclude": []} for i in range(1, 4)], storage_type='local'),  # 조 설정 (영구 저장)
     dcc.Store(id='editing-group-id'),
     dcc.Store(id='selected-group-count', data=3),
-    dcc.Store(id='fixed-seats-config', data=[]), 
+    dcc.Store(id='fixed-seats-config', data=[], storage_type='local'),  # 고정석 설정 (영구 저장)
     dcc.Store(id='temp-fixed-seats', data=[]),
     dcc.Store(id='assigned-map-store', data={}),
     dcc.Store(id="current-edit-seat", data=None),
-    dcc.Store(id='special-rules-store', data={'no_pair': [], 'no_cluster': []}),
+    dcc.Store(id='special-rules-store', data={'no_pair': [], 'no_cluster': []}, storage_type='local'),  # 특별 규칙 (영구 저장)
     dcc.Store(id='temp-cluster-selection', data=[]),
     dcc.Store(id='print-html-store', data=""),
     dcc.Download(id="download-template"),
