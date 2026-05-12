@@ -790,6 +790,68 @@ def manage_students(add_n, upload, del_n, edit_n, save_n, in_nos, in_names, in_g
     # 마지막 None 값은 upload-data의 contents를 초기화하여 같은 파일을 또 불러올 수 있게 합니다.
     return new_list, create_table("남"), create_table("여"), f"남학생 - {len([s for s in new_list if s['성별']=='남'])}명", f"여학생 - {len([s for s in new_list if s['성별']=='여'])}명", next_edit_idx, None, "", None, None
 
+# --- [새 기능] localStorage에 저장된 학생 데이터를 모달에 표시 ---
+@app.callback(
+    Output('table-male-container', 'children'),
+    Output('table-female-container', 'children'),
+    Output('count-male', 'children'),
+    Output('count-female', 'children'),
+    Input('stored-data', 'data'),
+    prevent_initial_call=False  # 💡 초기 로드 시에도 실행되도록 설정
+)
+def display_stored_students(student_data):
+    """localStorage에 저장된 학생 데이터를 테이블에 표시"""
+    if not student_data:
+        empty_table = dbc.Table([
+            html.Thead(html.Tr([
+                html.Th("번호", style={"width": "20%", "textAlign": "center"}), 
+                html.Th("이름", style={"width": "30%", "textAlign": "center"}), 
+                html.Th("성별", style={"width": "20%", "textAlign": "center"}), 
+                html.Th("관리", style={"width": "30%", "textAlign": "center"})
+            ])), 
+            html.Tbody([html.Tr([html.Td("등록된 학생이 없습니다", colSpan=4, className="text-center text-muted")])])
+        ], bordered=True, hover=True, size="sm", className="table-fixed")
+        return empty_table, empty_table, "남학생 - 0명", "여학생 - 0명"
+    
+    # 번호순 정렬
+    student_data = sorted(student_data, key=lambda x: int(x.get('번호', 0)))
+    
+    def create_display_table(gender):
+        """저장된 데이터를 표시용 테이블로 변환"""
+        rows = []
+        for idx, s in enumerate([st for st in student_data if st.get('성별') == gender]):
+            rows.append(html.Tr([
+                html.Td(s['번호'], className="align-middle text-center"), 
+                html.Td(s['이름'], className="align-middle text-center"), 
+                html.Td(s['성별'], className="align-middle text-center"), 
+                html.Td([
+                    dbc.Button("수정", id={'type': 'edit-btn', 'index': student_data.index(s)}, 
+                               color="info", outline=True, size="sm", className="me-1"),
+                    dbc.Button("삭제", id={'type': 'del-student', 'index': student_data.index(s)}, 
+                               color="danger", outline=True, size="sm")
+                ], style={"whiteSpace": "nowrap", "textAlign": "center"})
+            ]))
+        
+        return dbc.Table([
+            html.Thead(html.Tr([
+                html.Th("번호", style={"width": "20%", "textAlign": "center"}), 
+                html.Th("이름", style={"width": "30%", "textAlign": "center"}), 
+                html.Th("성별", style={"width": "20%", "textAlign": "center"}), 
+                html.Th("관리", style={"width": "30%", "textAlign": "center"})
+            ])), 
+            html.Tbody(rows)
+        ], bordered=True, hover=True, size="sm", className="table-fixed")
+    
+    male_count = len([s for s in student_data if s.get('성별') == '남'])
+    female_count = len([s for s in student_data if s.get('성별') == '여'])
+    
+    return (
+        create_display_table("남"),
+        create_display_table("여"),
+        f"남학생 - {male_count}명",
+        f"여학생 - {female_count}명"
+    )
+
 @app.callback(
     Output("download-template", "data"),
     Input("btn-download", "n_clicks"),
@@ -2083,12 +2145,16 @@ def save_seating_result(n_clicks, results, current_result, save_name):
 
 # 닫기 버튼
 @app.callback(
-    Output('seating-save-modal', 'is_open'),
+    # allow_duplicate=True 를 추가하여 다른 콜백과 충돌하지 않게 설정
+    Output('seating-save-modal', 'is_open', allow_duplicate=True), 
     Input('close-seating-modal-btn', 'n_clicks'),
     prevent_initial_call=True
 )
 def close_seating_modal(n_clicks):
-    return False
+    # 클릭이 발생했을 때만 모달을 닫음 (안전장치)
+    if n_clicks:
+        return False
+    raise PreventUpdate
 
 # 개별 배치 다운로드
 @app.callback(
