@@ -486,20 +486,58 @@ dbc.Modal([
     dbc.ModalHeader(dbc.ModalTitle("💾 자리 배치 결과 저장")),
     dbc.ModalBody([
         html.P("현재 배치 결과를 저장하시겠습니까?", className="mb-3"),
-        dbc.Label("저장 이름 (선택사항):", className="fw-bold mb-2"),
-        dbc.Input(id="seating-save-name", placeholder="예: 2024년 5월 배치", type="text", className="mb-3"),
+        # 저장 이름 입력 + 버튼을 한 줄로 배치
+        dbc.Row([
+            dbc.Col([
+                dbc.Label("저장 이름 (선택사항):", className="fw-bold mb-2"),
+                dbc.Input(id="seating-save-name", placeholder="예: 2024년 5월 배치", type="text", className="w-100"),
+            ], width=10),
+            dbc.Col([
+                dbc.Label("", className="fw-bold mb-2"),  # 정렬 맞추기
+                dbc.Button("저장하기", id="save-seating-result-btn", color="success", className="w-100"),
+            ], width=2),
+        ], className="mb-3"),
+        
         html.Hr(),
+        
+        # 저장된 배치 목록
         html.Div([
             html.P("💡 저장된 배치 목록:", className="fw-bold mb-2"),
-            html.Div(id="seating-results-list", style={"maxHeight": "200px", "overflowY": "auto", "border": "1px solid #ddd", "borderRadius": "5px", "padding": "10px"})
+            html.Div(id="seating-results-list", style={"maxHeight": "250px", "overflowY": "auto", "border": "1px solid #ddd", "borderRadius": "5px", "padding": "10px"})
+        ], className="mb-3"),
+        
+        html.Hr(),
+        
+        # 파일 업로드
+        html.Div([
+            html.P("📂 백업 파일 불러오기:", className="fw-bold mb-2"),
+            dcc.Upload(
+                id='seating-upload-backup',
+                children=html.Div([
+                    '📤 여기를 클릭하거나 파일을 드래그하여 백업 파일을 불러오세요 (JSON)'
+                ]),
+                style={
+                    'width': '100%',
+                    'height': '60px',
+                    'lineHeight': '60px',
+                    'borderWidth': '1px',
+                    'borderStyle': 'dashed',
+                    'borderRadius': '5px',
+                    'textAlign': 'center',
+                    'padding': '10px',
+                    'cursor': 'pointer',
+                    'backgroundColor': 'var(--input-bg)',
+                    'color': 'var(--text-color)',
+                },
+                multiple=False
+            ),
+            html.Div(id='upload-feedback', className="mt-2 small")
         ], className="mb-3"),
     ]),
     dbc.ModalFooter([
-        dbc.Button("저장하기", id="save-seating-result-btn", color="success", className="me-2"),
-        dbc.Button("다운로드 백업", id="backup-seating-btn", color="info", className="me-2"),
         dbc.Button("닫기", id="close-seating-modal-btn", color="secondary"),
     ]),
-], id="seating-save-modal", is_open=False, backdrop="static"),
+], id="seating-save-modal", is_open=False),  # backdrop 기본값 사용 (클릭으로 닫기 가능)
 
 # [팝업 8] 인쇄 설정 모달
 dbc.Modal([
@@ -1989,12 +2027,20 @@ def update_seating_results_list(results):
         items.append(
             dbc.Card([
                 dbc.CardBody([
-                    html.H6(name, className="mb-1"),
-                    html.Small(timestamp, className="text-muted"),
-                    dbc.Button("불러오기", id={'type': 'load-seating-btn', 'index': idx}, 
-                              color="info", size="sm", className="mt-2 me-2"),
-                    dbc.Button("삭제", id={'type': 'delete-seating-btn', 'index': idx}, 
-                              color="danger", size="sm", className="mt-2"),
+                    dbc.Row([
+                        dbc.Col([
+                            html.H6(name, className="mb-1"),
+                            html.Small(timestamp, className="text-muted"),
+                        ], width=8),
+                        dbc.Col([
+                            dbc.Button("불러오기", id={'type': 'load-seating-btn', 'index': idx}, 
+                                      color="info", size="sm", className="me-1", style={"whiteSpace": "nowrap"}),
+                            dbc.Button("다운로드", id={'type': 'download-single-seating-btn', 'index': idx}, 
+                                      color="primary", size="sm", className="me-1", style={"whiteSpace": "nowrap"}),
+                            dbc.Button("삭제", id={'type': 'delete-seating-btn', 'index': idx}, 
+                                      color="danger", size="sm", style={"whiteSpace": "nowrap"}),
+                        ], width=4, className="text-end"),
+                    ], className="align-items-center")
                 ])
             ], className="mb-2", style={"backgroundColor": "var(--card-bg)"})
         )
@@ -2034,23 +2080,64 @@ def save_seating_result(n_clicks, results, current_result, save_name):
 def close_seating_modal(n_clicks):
     return False
 
-# 백업 다운로드
+# 개별 배치 다운로드
 @app.callback(
     Output('download-seating-backup', 'data'),
-    Input('backup-seating-btn', 'n_clicks'),
+    Input({'type': 'download-single-seating-btn', 'index': ALL}, 'n_clicks'),
     State('seating-results-store', 'data'),
     prevent_initial_call=True
 )
-def download_seating_backup(n_clicks, results):
-    """저장된 모든 배치 결과를 JSON으로 다운로드"""
+def download_single_seating_result(n_clicks, results):
+    """선택한 배치 결과를 JSON으로 다운로드"""
     import json
-    import datetime
     
-    backup_data = {
-        'backup_date': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        'results': results or []
-    }
-    return dict(content=json.dumps(backup_data, ensure_ascii=False, indent=2), filename="자리배치_백업.json")
+    if not any(n_clicks):
+        raise PreventUpdate
+    
+    idx = ctx.triggered_id['index']
+    if idx >= len(results):
+        raise PreventUpdate
+    
+    result = results[idx]
+    filename = f"{result.get('name', '배치')}.json"
+    
+    return dict(content=json.dumps(result, ensure_ascii=False, indent=2), filename=filename)
+
+# 파일 업로드
+@app.callback(
+    Output('seating-results-store', 'data'),
+    Output('upload-feedback', 'children'),
+    Input('seating-upload-backup', 'contents'),
+    [State('seating-results-store', 'data'),
+     State('seating-upload-backup', 'filename')],
+    prevent_initial_call=True
+)
+def upload_seating_backup(contents, results, filename):
+    """백업 JSON 파일 업로드해서 결과 복구"""
+    import json
+    import base64
+    
+    if not contents or not filename.endswith('.json'):
+        return results, dbc.Alert("JSON 파일만 업로드 가능합니다.", color="danger", className="mb-0")
+    
+    try:
+        # Base64 디코딩
+        if ',' in contents:
+            contents = contents.split(',')[1]
+        decoded = base64.b64decode(contents).decode('utf-8')
+        data = json.loads(decoded)
+        
+        results = results or []
+        # 업로드된 파일이 단일 항목이면 추가
+        if isinstance(data, dict) and 'data' in data:
+            results.append(data)
+        # 여러 항목이면 모두 추가
+        elif isinstance(data, list):
+            results.extend(data)
+        
+        return results, dbc.Alert(f"✅ '{filename}'에서 {len(data) if isinstance(data, list) else 1}개 배치를 복구했습니다.", color="success", className="mb-0")
+    except Exception as e:
+        return results, dbc.Alert(f"❌ 파일 업로드 실패: {str(e)}", color="danger", className="mb-0")
 
 # 저장된 배치 불러오기
 @app.callback(
