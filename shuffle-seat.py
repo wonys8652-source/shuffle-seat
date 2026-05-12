@@ -486,16 +486,20 @@ dbc.Modal([
     dbc.ModalHeader(dbc.ModalTitle("💾 자리 배치 결과 저장")),
     dbc.ModalBody([
         html.P("현재 배치 결과를 저장하시겠습니까?", className="mb-3"),
-        # 저장 이름 입력 + 버튼을 한 줄로 배치
-        dbc.Row([
-            dbc.Col([
-                dbc.Label("저장 이름 (선택사항):", className="fw-bold mb-2"),
-                dbc.Input(id="seating-save-name", placeholder="예: 2024년 5월 배치", type="text", className="w-100"),
-            ], width=10),
-            dbc.Col([
-                dbc.Label("", className="fw-bold mb-2"),  # 정렬 맞추기
-                dbc.Button("저장하기", id="save-seating-result-btn", color="success", className="w-100"),
-            ], width=2),
+        
+        # 1. 저장 이름 입력 + 버튼을 한 줄로 배치 (비율 8:4 조정)
+        html.Div([
+            dbc.Label("저장 이름 (선택사항):", className="fw-bold mb-2"),
+            dbc.Row([
+                dbc.Col(
+                    dbc.Input(id="seating-save-name", placeholder="예: 2024년 5월 배치", type="text"), 
+                    width=8  # 입력 칸 너비 축소
+                ),
+                dbc.Col(
+                    dbc.Button("저장", id="save-seating-result-btn", color="success", className="w-100"), 
+                    width=4  # 버튼을 한 줄에 배치
+                ),
+            ], className="g-2"), # g-2: 컬럼 사이의 약간의 간격(gap)
         ], className="mb-3"),
         
         html.Hr(),
@@ -514,7 +518,7 @@ dbc.Modal([
             dcc.Upload(
                 id='seating-upload-backup',
                 children=html.Div([
-                    '📤 여기를 클릭하거나 파일을 드래그하여 백업 파일을 불러오세요 (JSON)'
+                    '📤 여기를 클릭하거나 파일을 드래그하여 백업 파일을 불러오세요'
                 ]),
                 style={
                     'width': '100%',
@@ -537,7 +541,7 @@ dbc.Modal([
     dbc.ModalFooter([
         dbc.Button("닫기", id="close-seating-modal-btn", color="secondary"),
     ]),
-], id="seating-save-modal", is_open=False),  # backdrop 기본값 사용 (클릭으로 닫기 가능)
+], id="seating-save-modal", is_open=False),
 
 # [팝업 8] 인쇄 설정 모달
 dbc.Modal([
@@ -2027,22 +2031,28 @@ def update_seating_results_list(results):
         items.append(
             dbc.Card([
                 dbc.CardBody([
-                    dbc.Row([
-                        dbc.Col([
-                            html.H6(name, className="mb-1"),
+                    # d-flex와 justify-content-between을 사용하여 양끝 정렬
+                    html.Div([
+                        
+                        # 1. 왼쪽 영역 (이름 및 시간)
+                        html.Div([
+                            html.H6(name, className="mb-1 fw-bold"),
                             html.Small(timestamp, className="text-muted"),
-                        ], width=8),
-                        dbc.Col([
+                        ]),
+                        
+                        # 2. 오른쪽 영역 (버튼 3개를 d-flex로 한 줄 배치)
+                        html.Div([
                             dbc.Button("불러오기", id={'type': 'load-seating-btn', 'index': idx}, 
                                       color="info", size="sm", className="me-1", style={"whiteSpace": "nowrap"}),
                             dbc.Button("다운로드", id={'type': 'download-single-seating-btn', 'index': idx}, 
                                       color="primary", size="sm", className="me-1", style={"whiteSpace": "nowrap"}),
                             dbc.Button("삭제", id={'type': 'delete-seating-btn', 'index': idx}, 
                                       color="danger", size="sm", style={"whiteSpace": "nowrap"}),
-                        ], width=4, className="text-end"),
-                    ], className="align-items-center")
-                ])
-            ], className="mb-2", style={"backgroundColor": "var(--card-bg)"})
+                        ], className="d-flex align-items-center") # 버튼들을 수직 중앙 정렬하며 한 줄로 묶음
+                        
+                    ], className="d-flex justify-content-between align-items-center")
+                ], className="p-2") # CardBody의 안쪽 여백(padding)을 줄여서 좀 더 컴팩트하게 표시
+            ], className="mb-2 shadow-sm", style={"backgroundColor": "var(--card-bg)"})
         )
     return items
 
