@@ -1,5 +1,5 @@
 import dash
-from dash import dcc, html, Input, Output, State, ALL, ctx
+from dash import Dash, html, dcc, Input, Output, State, ctx, ALL
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 import pandas as pd
@@ -229,7 +229,7 @@ app.layout = html.Div([
             ], className="g-2")
         ]),
         dbc.ModalFooter([dbc.Button("저장 및 닫기", id="group-mgr-close-btn", color="success", className="w-100")]),
-    ], id="group-mgr-modal", is_open=False, backdrop="static", style={"zIndex": 2000}),
+    ], id="group-mgr-modal", is_open=False, style={"zIndex": 2000}),
 
     dbc.Modal([
         dbc.ModalHeader(dbc.ModalTitle("배치 전략 설정")),
@@ -319,7 +319,7 @@ app.layout = html.Div([
                                 dbc.Col(dbc.Input(id="new-student-no", type="number", placeholder="번호", size="sm", inputMode="numeric"), width=3),
                                 dbc.Col(dbc.Input(id="new-student-name", type="text", placeholder="이름", size="sm"), width=4),
                                 dbc.Col(dbc.Select(id="new-student-gender", options=[{"label": "남", "value": "남"}, {"label": "여", "value": "여"}], placeholder="성별", size="sm"), width=3),
-                                dbc.Col(dbc.Button("추가", id="add-student-btn", color="primary", size="sm", className="w-100"), width=2),
+                                dbc.Col(dbc.Button("추가", id="add-student-btn", color="secondary", size="sm", className="w-100"), width=2),
                             ], className="g-2")
                         ], className="p-3")
                     ], className="shadow-sm h-100")
@@ -388,7 +388,7 @@ app.layout = html.Div([
             # 💡 수정된 부분: 텍스트와 버튼을 한 줄(Row)에 배치하고 버튼 크기를 줄였습니다.
             dbc.Row([
                 dbc.Col(html.H6("아래 교실 모형에서 좌석을 클릭하여 추가하세요", className="fw-bold m-0"), width=8, className="d-flex align-items-center"),
-                dbc.Col(dbc.Button("현재 선택된 좌석 저장", id="add-fixed-rule-btn", color="primary", size="sm", className="w-100"), width=4)
+                dbc.Col(dbc.Button("현재 선택된 좌석 저장", id="add-fixed-rule-btn", color="secondary", size="sm", className="w-100"), width=4)
             ], className="mb-3"),
             html.Div(id="fixed-layout-preview", className="bg-light p-3 rounded border")
         ]),
@@ -441,7 +441,7 @@ dbc.Modal([
                         # 💡 dcc.Dropdown 대신 dbc.Select로 변경하여 다른 메뉴와 형식을 맞춥니다.
                         dbc.Col(dbc.Select(id='no-pair-1', placeholder="학생 A 선택"), width=5),
                         dbc.Col(dbc.Select(id='no-pair-2', placeholder="학생 B 선택"), width=5),
-                        dbc.Col(dbc.Button("추가", id='add-no-pair-btn', color="primary", className="w-100"), width=2)
+                        dbc.Col(dbc.Button("추가", id='add-no-pair-btn', color="secondary", className="w-100"), width=2)
                     ], className="mb-3"),
                     html.Div(id='no-pair-list')
                     # 💡 [중요] className에서 bg-light를 제거하고 다크모드 변수(--input-bg)를 적용합니다.
@@ -478,7 +478,7 @@ dbc.Modal([
                     
                     dbc.Row([
                         dbc.Col(dbc.Button("선택 초기화", id='clear-cluster-temp-btn', color="secondary", outline=True, size="sm"), width=4),
-                        dbc.Col(dbc.Button("그룹 규칙 추가", id='add-no-cluster-btn', color="primary", className="w-100"), width=8)
+                        dbc.Col(dbc.Button("그룹 규칙 추가", id='add-no-cluster-btn', color="secondary", className="w-100"), width=8)
                     ]),
                     
                 ], className="p-3 border rounded mt-2", style={"backgroundColor": "var(--input-bg)"})
@@ -710,17 +710,14 @@ def sync_config(g_count, rm, rp, cm, cp, rv, cv, ex_clicks, gender_clicks, reset
 
     return config, grid, r, c
 
+# ✅ 콜백 1: 데이터 상태 관리만 담당 (테이블 Output 완전 제거)
 @app.callback(
     Output('stored-data', 'data'),
-    Output('table-male-container', 'children', allow_duplicate=True),
-    Output('table-female-container', 'children', allow_duplicate=True),
-    Output('count-male', 'children', allow_duplicate=True),
-    Output('count-female', 'children', allow_duplicate=True),
     Output('edit-row-idx', 'data'),
     Output('new-student-no', 'value'),
     Output('new-student-name', 'value'),
     Output('new-student-gender', 'value'),
-    Output('upload-data', 'contents'), # 💡 1번 문제 해결: 업로드 데이터 초기화용 Output 추가
+    Output('upload-data', 'contents'),
     Input('add-student-btn', 'n_clicks'),
     Input('upload-data', 'contents'),
     Input({'type': 'del-student', 'index': ALL}, 'n_clicks'),
@@ -736,136 +733,125 @@ def sync_config(g_count, rm, rp, cm, cp, rv, cv, ex_clicks, gender_clicks, reset
     State('edit-row-idx', 'data'),
     prevent_initial_call=True
 )
-def manage_students(add_n, upload, del_n, edit_n, save_n, in_nos, in_names, in_genders, n_no, n_na, n_ge, current_data, current_edit_idx):
+def manage_students(add_n, upload, del_n, edit_n, save_n,
+                    in_nos, in_names, in_genders,
+                    n_no, n_na, n_ge, current_data, current_edit_idx):
     tid = ctx.triggered_id
     new_list = list(current_data) if current_data else []
     next_edit_idx = current_edit_idx
-    
-    # 데이터 추가/수정/삭제 로직
+
     if tid == 'add-student-btn' and n_no and n_na and n_ge:
         new_list.append({"번호": int(n_no), "이름": n_na, "성별": n_ge})
+        next_edit_idx = None
     elif tid == 'upload-data' and upload:
         try:
             df = pd.read_excel(io.BytesIO(base64.b64decode(upload.split(',')[1])))
             if all(col in df.columns for col in ['번호', '이름', '성별']):
                 new_list = df.to_dict('records')
-        except Exception: pass
+        except Exception:
+            pass
+        next_edit_idx = None
     elif isinstance(tid, dict) and tid.get('type') == 'del-student':
         new_list.pop(tid['index'])
+        next_edit_idx = None
     elif isinstance(tid, dict) and tid.get('type') == 'edit-btn':
         next_edit_idx = tid['index'] if tid['index'] >= 0 else None
     elif isinstance(tid, dict) and tid.get('type') == 'save-btn':
         if in_nos and in_names and in_genders:
-            new_list[tid['index']] = {"번호": int(in_nos[0]), "이름": in_names[0], "성별": in_genders[0]}
+            new_list[tid['index']] = {
+                "번호": int(in_nos[0]), "이름": in_names[0], "성별": in_genders[0]
+            }
         next_edit_idx = None
 
-    # 번호순 정렬
     new_list = sorted(new_list, key=lambda x: int(x.get('번호', 0)))
-    
-    # 💡 수정된 부분: 
-    # 1. 수정/삭제 버튼을 링크형에서 외곽선 버튼(outline=True)으로 변경했습니다.
-    # 2. html.Th(테이블 헤더)에 width 속성을 주어 열 너비가 고정되도록 했습니다.
-    def create_table(gender):
-        subset = [(i, s) for i, s in enumerate(new_list) if s['성별'] == gender]
-        rows = []
-        for idx, s in subset:
-            if idx == next_edit_idx:
-                # [수정 모드] 입력 폼 렌더링
-                rows.append(html.Tr([
-                    html.Td(dbc.Input(id={'type': 'in-no', 'index': idx}, value=s['번호'], type="number", size="sm")),
-                    html.Td(dbc.Input(id={'type': 'in-name', 'index': idx}, value=s['이름'], size="sm")),
-                    html.Td(dbc.Select(id={'type': 'in-gender', 'index': idx}, options=[{"label": "남", "value": "남"}, {"label": "여", "value": "여"}], value=s['성별'], size="sm")),
-                    html.Td([
-                        dbc.Button("저장", id={'type': 'save-btn', 'index': idx}, color="success", size="sm", className="me-1"),
-                        dbc.Button("취소", id={'type': 'edit-btn', 'index': -1}, color="secondary", size="sm")
-                    ], style={"whiteSpace": "nowrap", "textAlign": "center"})
-                ]))
-            else:
-                # [일반 모드] 버튼형으로 렌더링
-                rows.append(html.Tr([
-                    html.Td(s['번호'], className="align-middle text-center"), 
-                    html.Td(s['이름'], className="align-middle text-center"), 
-                    html.Td(s['성별'], className="align-middle text-center"), 
-                    html.Td([
-                        dbc.Button("수정", id={'type': 'edit-btn', 'index': idx}, 
-                                   color="info", outline=True, size="sm", className="me-1"),
-                        dbc.Button("삭제", id={'type': 'del-student', 'index': idx}, 
-                                   color="danger", outline=True, size="sm")
-                    ], style={"whiteSpace": "nowrap", "textAlign": "center"})
-                ]))
-                
-        # 헤더 너비(20%, 30%, 20%, 30%)를 고정하여 폼이 바뀌어도 표가 출렁이지 않음
-        return dbc.Table([
-            html.Thead(html.Tr([
-                html.Th("번호", style={"width": "20%", "textAlign": "center"}), 
-                html.Th("이름", style={"width": "30%", "textAlign": "center"}), 
-                html.Th("성별", style={"width": "20%", "textAlign": "center"}), 
-                html.Th("관리", style={"width": "30%", "textAlign": "center"})
-            ])), 
-            html.Tbody(rows)
-        ], bordered=True, hover=True, size="sm", className="table-fixed")
-        
-    # 마지막 None 값은 upload-data의 contents를 초기화하여 같은 파일을 또 불러올 수 있게 합니다.
-    return new_list, create_table("남"), create_table("여"), f"남학생 - {len([s for s in new_list if s['성별']=='남'])}명", f"여학생 - {len([s for s in new_list if s['성별']=='여'])}명", next_edit_idx, None, "", None, None
 
-# --- [새 기능] localStorage에 저장된 학생 데이터를 모달에 표시 ---
+    # 반환값 순서: stored-data, edit-row-idx, 입력폼 초기화 3개, upload 초기화
+    return new_list, next_edit_idx, None, "", None, None
+
+
+# ✅ 콜백 2: 테이블 렌더링만 담당
+#    stored-data와 edit-row-idx 둘 다 Input으로 받아 수정 모드를 항상 인식
 @app.callback(
     Output('table-male-container', 'children'),
     Output('table-female-container', 'children'),
     Output('count-male', 'children'),
     Output('count-female', 'children'),
     Input('stored-data', 'data'),
-    prevent_initial_call=False  # 💡 초기 로드 시에도 실행되도록 설정
+    Input('edit-row-idx', 'data'),   # ← 핵심: edit 상태도 트리거로 받음
+    prevent_initial_call=False       # 초기 로드 시에도 실행
 )
-def display_stored_students(student_data):
-    """localStorage에 저장된 학생 데이터를 테이블에 표시"""
-    if not student_data:
-        empty_table = dbc.Table([
-            html.Thead(html.Tr([
-                html.Th("번호", style={"width": "20%", "textAlign": "center"}), 
-                html.Th("이름", style={"width": "30%", "textAlign": "center"}), 
-                html.Th("성별", style={"width": "20%", "textAlign": "center"}), 
-                html.Th("관리", style={"width": "30%", "textAlign": "center"})
-            ])), 
-            html.Tbody([html.Tr([html.Td("등록된 학생이 없습니다", colSpan=4, className="text-center text-muted")])])
-        ], bordered=True, hover=True, size="sm", className="table-fixed")
-        return empty_table, empty_table, "남학생 - 0명", "여학생 - 0명"
-    
-    # 번호순 정렬
-    student_data = sorted(student_data, key=lambda x: int(x.get('번호', 0)))
-    
-    def create_display_table(gender):
-        """저장된 데이터를 표시용 테이블로 변환"""
-        rows = []
-        for idx, s in enumerate([st for st in student_data if st.get('성별') == gender]):
-            rows.append(html.Tr([
-                html.Td(s['번호'], className="align-middle text-center"), 
-                html.Td(s['이름'], className="align-middle text-center"), 
-                html.Td(s['성별'], className="align-middle text-center"), 
-                html.Td([
-                    dbc.Button("수정", id={'type': 'edit-btn', 'index': student_data.index(s)}, 
-                               color="info", outline=True, size="sm", className="me-1"),
-                    dbc.Button("삭제", id={'type': 'del-student', 'index': student_data.index(s)}, 
-                               color="danger", outline=True, size="sm")
-                ], style={"whiteSpace": "nowrap", "textAlign": "center"})
-            ]))
-        
+def display_students(student_data, edit_idx):
+    def make_empty_table():
         return dbc.Table([
             html.Thead(html.Tr([
-                html.Th("번호", style={"width": "20%", "textAlign": "center"}), 
-                html.Th("이름", style={"width": "30%", "textAlign": "center"}), 
-                html.Th("성별", style={"width": "20%", "textAlign": "center"}), 
+                html.Th("번호", style={"width": "20%", "textAlign": "center"}),
+                html.Th("이름", style={"width": "30%", "textAlign": "center"}),
+                html.Th("성별", style={"width": "20%", "textAlign": "center"}),
                 html.Th("관리", style={"width": "30%", "textAlign": "center"})
-            ])), 
+            ])),
+            html.Tbody([html.Tr([
+                html.Td("등록된 학생이 없습니다", colSpan=4,
+                        className="text-center text-muted")
+            ])])
+        ], bordered=True, hover=True, size="sm", className="table-fixed")
+
+    if not student_data:
+        return make_empty_table(), make_empty_table(), "남학생 - 0명", "여학생 - 0명"
+
+    student_data = sorted(student_data, key=lambda x: int(x.get('번호', 0)))
+
+    def create_table(gender):
+        subset = [(i, s) for i, s in enumerate(student_data) if s['성별'] == gender]
+        rows = []
+        for idx, s in subset:
+            if idx == edit_idx:
+                # 수정 모드
+                rows.append(html.Tr([
+                    html.Td(dbc.Input(id={'type': 'in-no', 'index': idx},
+                                     value=s['번호'], type="number", size="sm")),
+                    html.Td(dbc.Input(id={'type': 'in-name', 'index': idx},
+                                     value=s['이름'], size="sm")),
+                    html.Td(dbc.Select(id={'type': 'in-gender', 'index': idx},
+                                      options=[{"label": "남", "value": "남"},
+                                               {"label": "여", "value": "여"}],
+                                      value=s['성별'], size="sm")),
+                    html.Td([
+                        dbc.Button("저장", id={'type': 'save-btn', 'index': idx},
+                                   color="success", size="sm", className="me-1"),
+                        dbc.Button("취소", id={'type': 'edit-btn', 'index': -1},
+                                   color="secondary", size="sm")
+                    ], style={"whiteSpace": "nowrap", "textAlign": "center"})
+                ]))
+            else:
+                # 일반 모드
+                rows.append(html.Tr([
+                    html.Td(s['번호'], className="align-middle text-center"),
+                    html.Td(s['이름'], className="align-middle text-center"),
+                    html.Td(s['성별'], className="align-middle text-center"),
+                    html.Td([
+                        dbc.Button("수정", id={'type': 'edit-btn', 'index': idx},
+                                   color="info", outline=True, size="sm", className="me-1"),
+                        dbc.Button("삭제", id={'type': 'del-student', 'index': idx},
+                                   color="danger", outline=True, size="sm")
+                    ], style={"whiteSpace": "nowrap", "textAlign": "center"})
+                ]))
+
+        return dbc.Table([
+            html.Thead(html.Tr([
+                html.Th("번호", style={"width": "20%", "textAlign": "center"}),
+                html.Th("이름", style={"width": "30%", "textAlign": "center"}),
+                html.Th("성별", style={"width": "20%", "textAlign": "center"}),
+                html.Th("관리", style={"width": "30%", "textAlign": "center"})
+            ])),
             html.Tbody(rows)
         ], bordered=True, hover=True, size="sm", className="table-fixed")
-    
+
     male_count = len([s for s in student_data if s.get('성별') == '남'])
     female_count = len([s for s in student_data if s.get('성별') == '여'])
-    
+
     return (
-        create_display_table("남"),
-        create_display_table("여"),
+        create_table("남"),
+        create_table("여"),
         f"남학생 - {male_count}명",
         f"여학생 - {female_count}명"
     )
