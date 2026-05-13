@@ -6,6 +6,7 @@ import pandas as pd
 import random
 import io
 import base64
+import json
 import time
 
 # 앱 초기화
@@ -233,7 +234,7 @@ app.layout = html.Div([
     dbc.Modal([
         dbc.ModalHeader(dbc.ModalTitle("배치 전략 설정")),
         dbc.ModalBody([
-            dbc.Label("짝꿍 배치 규칙을 선택하세요:"),
+            dbc.Label("짝꿍 배치 규칙을 선택하세요:", className="fw-bold"),
             dbc.RadioItems(
                 options=[
                     {"label": "상관 없음 (전체 랜덤)", "value": "random"},
@@ -242,6 +243,32 @@ app.layout = html.Div([
                 ],
                 value="random", id="placement-strategy", className="mt-2",
             ),
+            
+            html.Hr(),
+            
+            dbc.Label("이전 기록들을 반영해보세요.", className="fw-bold mb-3"),
+
+            # --- [트랙 1] 이전 짝 제외하기 ---
+            html.Div([
+                html.Div("🤝 이전 짝 제외하기", className="fw-bold", style={"fontSize": "1rem"}),
+                html.Div("선택한 기록에서 짝꿍이었던 학생들끼리는 다시 앉지 않습니다.", className="text-muted small mb-2"),
+                html.Div(id="history-pair-ref-grid", className="d-flex flex-wrap gap-2 mb-2"
+                         ),
+                dcc.Store(id="history-pair-refs-store", data=[]) # 짝 제외용 저장소
+            ], className="border rounded p-2 mb-3"),
+
+            # --- [트랙 2] 이전 자리 제외하기 ---
+            html.Div([
+                html.Div("🪑 이전 자리 제외하기", className="fw-bold", style={"fontSize": "1rem"}),
+                html.Div("선택한 기록에서 앉았던 좌석에는 다시 앉지 않습니다.", className="text-muted small mb-2"),
+                html.Div(id="history-seat-ref-grid", className="d-flex flex-wrap gap-2 mb-2"),
+                dcc.Store(id="history-seat-refs-store", data=[]) # 자리 제외용 저장소
+            ], className="border rounded p-2"),
+
+            html.Div(
+                "※ 데이터 선택 시 실시간 반영됩니다. 너무 많은 데이터를 선택하면 배치가 불가능할 수 있습니다.", 
+                className="text-muted small mt-3"
+            )
         ]),
         dbc.ModalFooter([dbc.Button("저장 및 닫기", id="strategy-close-btn", color="success")]),
     ], id="strategy-modal", is_open=False),
@@ -488,37 +515,49 @@ dbc.Modal([
         html.P("현재 배치 결과를 저장하시겠습니까?", className="mb-3"),
         
         # 저장 이름 입력 + 저장 버튼
-        dbc.Row([
-            dbc.Col([
-                dbc.Label("저장 이름 (선택사항):", className="fw-bold mb-2"),
-                dbc.Input(id="seating-save-name", placeholder="예: 2024년 5월 배치", type="text"),
-            ], width=10),
-            dbc.Col([
-                dbc.Label("", className="fw-bold mb-2"),
-                dbc.Button("저장", id="save-seating-result-btn", color="success", className="w-100"),
-            ], width=2),
+        html.Div([
+            dbc.Label("저장 이름 (선택사항):", className="fw-bold mb-2"),
+            dbc.InputGroup([
+                dbc.Input(id="seating-save-name", placeholder="예: 3월 2일 배치", type="text"),
+                dbc.Button("저장", id="save-seating-result-btn", color="success"),
+            ]),
         ], className="mb-3"),
         
         html.Hr(),
         
         # 저장된 배치 목록
         html.Div([
-            html.P("💡 저장된 배치 목록:", className="fw-bold mb-2"),
+            html.P("💡 저장된 배치 목록:", className="fw-bold mb-0"),
+            # [수정 1] 목록 아래 안내 텍스트 추가 (클릭하여 불러오기)
+            html.P("(클릭하여 불러오기)", className="text-muted small mb-2 ms-4"),
+            
             html.Div(id="seating-results-list", style={"maxHeight": "300px", "overflowY": "auto", "border": "1px solid #ddd", "borderRadius": "5px", "padding": "10px"})
         ], className="mb-3"),
+
+        html.Hr(),
         
-        # 숨겨진 파일 업로드 컴포넌트
+        # [수정] 다운로드, 불러오기 버튼 호버 효과 적용 (outline 속성 사용)
+        dbc.Row([
+            dbc.Col(dbc.Button("다운로드 ⬇️", id="download-all-seating-btn", 
+                               outline=True, color="info", 
+                               className="w-100 fw-bold")),
+            dbc.Col(dbc.Button("불러오기 ⬆️", 
+                              id="upload-seating-btn",
+                              outline=True, color="info", 
+                              className="w-100 fw-bold",
+                              style={"cursor": "pointer"})),
+        ], className="g-2"),
+        
+        # 파일 업로드 컴포넌트 - 숨김 (display: none)
         dcc.Upload(
             id='hidden-seating-upload',
-            children=html.Div(['']),
-            style={'display': 'none'},
+            children=html.Div([]),
+            style={'display': 'none'},  # 컴포넌트 숨기기
             multiple=False
         ),
     ]),
     dbc.ModalFooter([
-        dbc.Button("다운로드", id="download-all-seating-btn", color="primary", className="me-2"),
-        dbc.Button("불러오기", id="upload-seating-btn", color="info", className="me-2"),
-        dbc.Button("닫기", id="close-seating-modal-btn", color="secondary"),
+        dbc.Button("닫기", id="close-seating-modal-btn", color="secondary", className="w-100"),
     ]),
 ], id="seating-save-modal", is_open=False),
 
@@ -673,10 +712,10 @@ def sync_config(g_count, rm, rp, cm, cp, rv, cv, ex_clicks, gender_clicks, reset
 
 @app.callback(
     Output('stored-data', 'data'),
-    Output('table-male-container', 'children'),
-    Output('table-female-container', 'children'),
-    Output('count-male', 'children'),
-    Output('count-female', 'children'),
+    Output('table-male-container', 'children', allow_duplicate=True),
+    Output('table-female-container', 'children', allow_duplicate=True),
+    Output('count-male', 'children', allow_duplicate=True),
+    Output('count-female', 'children', allow_duplicate=True),
     Output('edit-row-idx', 'data'),
     Output('new-student-no', 'value'),
     Output('new-student-name', 'value'),
@@ -1163,20 +1202,18 @@ def assign_by_number(student_data, config):
 
 # generate_seats_logic 콜백 함수 내부 수정 (기존 로직에 추가)
 @app.callback(
-    [Output('assigned-map-store', 'data'), 
-     Output('alert-container', 'children')], 
-    [Input('generate-btn', 'n_clicks'), 
-     Input('reset-btn', 'n_clicks'),
-     Input('assign-number-btn', 'n_clicks')],
-    [State('groups-config', 'data'),
-     State('stored-data', 'data'),
-     State('fixed-seats-config', 'data'),      # 👈 추가: 고정석 데이터
-     State('special-rules-store', 'data'),     # 👈 추가: 짝꿍/밀집 방지 데이터 (에러 해결 핵심)
-     State('placement-strategy', 'value')],       # 👈 추가: 배치 전략(동성/이성) 데이터
+    [Output('assigned-map-store', 'data', allow_duplicate=True), Output('alert-container', 'children')],
+    [Input('generate-btn', 'n_clicks'), Input('reset-btn', 'n_clicks'), Input('assign-number-btn', 'n_clicks')],
+    [State('groups-config', 'data'), State('stored-data', 'data'), 
+     State('fixed-seats-config', 'data'), State('special-rules-store', 'data'), 
+     State('placement-strategy', 'value'),
+     State('history-pair-refs-store', 'data'), # 9번째: 짝 제외 선택목록
+     State('history-seat-refs-store', 'data'), # 10번째: 자리 제외 선택목록
+     State('seating-results-store', 'data')],
     prevent_initial_call=True
 )
-def generate_seats_logic(gen_n, reset_n, num_n, config, student_data, fixed_config, special_rules, strategy):
-    # 이제 함수의 인자(parameter)로 special_rules를 받으므로 UnboundLocalError가 발생하지 않습니다.
+def generate_seats_logic(gen_n, reset_n, num_n, config, student_data, fixed_config, special_rules, 
+                         strategy, pair_refs, seat_refs, seating_results):
     tid = ctx.triggered_id
     if not tid: raise PreventUpdate
     
@@ -1189,6 +1226,42 @@ def generate_seats_logic(gen_n, reset_n, num_n, config, student_data, fixed_conf
     if tid == "assign-number-btn":
         new_map = assign_by_number(student_data, config)
         return new_map, dash.no_update
+
+    pair_refs = pair_refs or []
+    seat_refs = seat_refs or []
+    seating_results = seating_results or []
+    
+    # --- [히스토리 분리 파싱] 1. 선택된 과거 데이터에서 짝꿍/좌석 정보 추출 ---
+    past_pairs = set()
+    past_seats = {} # {학생번호: set(과거 자리ID들)}
+    
+    # (1) 이전 짝 제외 트랙 처리
+    if pair_refs and seating_results:
+        for idx in pair_refs:
+            if idx < len(seating_results):
+                res_map = seating_results[idx].get('data', {})
+                pos_map_past = {stu['번호']: sid for sid, stu in res_map.items() if stu}
+                nos = list(pos_map_past.keys())
+                for i in range(len(nos)):
+                    for j in range(i+1, len(nos)):
+                        n1, n2 = nos[i], nos[j]
+                        s1, s2 = pos_map_past[n1], pos_map_past[n2]
+                        # 가로로 인접한(짝꿍) 경우만 추출
+                        g1, r1, c1 = map(int, s1.split('-'))
+                        g2, r2, c2 = map(int, s2.split('-'))
+                        if g1 == g2 and r1 == r2 and abs(c1 - c2) == 1:
+                            past_pairs.add(tuple(sorted([n1, n2])))
+
+    # (2) 이전 자리 제외 트랙 처리
+    if seat_refs and seating_results:
+        for idx in seat_refs:
+            if idx < len(seating_results):
+                res_map = seating_results[idx].get('data', {})
+                for sid, stu in res_map.items():
+                    if stu:
+                        s_no = stu['번호']
+                        if s_no not in past_seats: past_seats[s_no] = set()
+                        past_seats[s_no].add(sid)
 
     # --- 여기서부터 랜덤 배치 로직 ---
     # 데이터가 None일 경우를 대비해 기본값 설정
@@ -1326,7 +1399,31 @@ def generate_seats_logic(gen_n, reset_n, num_n, config, student_data, fixed_conf
                             is_valid = False; break
                     if not is_valid: break
                 if not is_valid: break
+        # --- [히스토리 기능] 2. 과거 동일 좌석 검사 적용 ---
+            if is_valid and seat_refs:
+                for no, seat in pos_map.items():
+                    if no in past_seats and seat in past_seats[no]:
+                        is_valid = False
+                        break
 
+            # --- [히스토리 기능] 3. 과거 짝꿍 검사 적용 ---
+            if is_valid and pair_refs:
+                nos = list(pos_map.keys())
+                for i in range(len(nos)):
+                    for j in range(i+1, len(nos)):
+                        n1, n2 = nos[i], nos[j]
+                        
+                        # 두 학생이 '현재' 짝꿍이 되었는지 확인
+                        s1, s2 = pos_map[n1], pos_map[n2]
+                        g1, r1, c1 = map(int, s1.split('-'))
+                        g2, r2, c2 = map(int, s2.split('-'))
+                        
+                        if g1 == g2 and r1 == r2 and abs(c1 - c2) == 1:
+                            # 현재 짝꿍인데, '과거'에도 짝꿍이었다면? -> 배치 실패(무효화)
+                            if tuple(sorted([n1, n2])) in past_pairs:
+                                is_valid = False
+                                break
+                    if not is_valid: break
         if is_valid:
             return assigned_map, dash.no_update
 
@@ -1636,6 +1733,136 @@ def toggle_student_selection(n_clicks_list, current_selection):
         current_selection.append(clicked_name)
     
     return current_selection
+
+# --- [히스토리 데이터 선택 기능 (버튼 그리드형)] ---
+# --- [히스토리 두 트랙 분리 관리 로직] ---
+
+@app.callback(
+    [Output('history-pair-ref-grid', 'children'),
+     Output('history-seat-ref-grid', 'children'),
+     Output('history-pair-refs-store', 'data'),
+     Output('history-seat-refs-store', 'data')],
+    Input('seating-results-store', 'data')
+)
+def update_history_tracks(results):
+    if not results:
+        return [], [], [], []
+    
+    pair_btns, seat_btns = [], []
+    all_indices = list(range(len(results)))
+    
+    # 공통 초기 스타일 (87% 불투명도)
+    initial_style = {
+        "width": "120px", "height": "38px", "whiteSpace": "nowrap", 
+        "overflow": "hidden", "textOverflow": "ellipsis",
+        "padding": "6px 10px", "fontSize": "0.85rem",
+        "backgroundColor": "#FFFFFF", "color": "#333333",
+        "border": "1px solid #dee2e6", "opacity": 0.87,
+        "textAlign": "left" # 아이콘이 왼쪽에 오도록 왼쪽 정렬
+    }
+    
+    for i, res in enumerate(results):
+        # res가 dictionary인지 확인, 아니면 기본값 사용
+        if isinstance(res, dict):
+            name = res.get('name', f'배치 {i+1}')
+        else:
+            name = f'배치 {i+1}'
+        
+        # 초기 상태: 선택됨 (✅ 포함)
+        display_text = f"✅ {name}"
+        
+        pair_btns.append(dbc.Button(display_text, id={'type': 'h-pair-btn', 'index': i}, 
+                                   style=initial_style, title=name))
+        seat_btns.append(dbc.Button(display_text, id={'type': 'h-seat-btn', 'index': i}, 
+                                   style=initial_style, title=name))
+        
+    return pair_btns, seat_btns, all_indices, all_indices
+
+# 2. 버튼 클릭 시 각 저장소(Store) 업데이트 (패턴 매칭 콜백)
+@app.callback(
+    [Output('history-pair-refs-store', 'data', allow_duplicate=True),
+     Output('history-seat-refs-store', 'data', allow_duplicate=True)],
+    [Input({'type': 'h-pair-btn', 'index': ALL}, 'n_clicks'),
+     Input({'type': 'h-seat-btn', 'index': ALL}, 'n_clicks')],
+    [State('history-pair-refs-store', 'data'),
+     State('history-seat-refs-store', 'data')],
+    prevent_initial_call=True
+)
+def toggle_track_selections(pair_n, seat_n, pair_store, seat_store):
+    from dash import ctx
+    if not ctx.triggered_id: raise PreventUpdate
+    
+    target_type = ctx.triggered_id['type']
+    idx = ctx.triggered_id['index']
+    
+    if target_type == 'h-pair-btn':
+        if idx in pair_store: pair_store.remove(idx)
+        else: pair_store.append(idx)
+    else:
+        if idx in seat_store: seat_store.remove(idx)
+        else: seat_store.append(idx)
+        
+    return pair_store, seat_store
+
+# 3. 각 트랙 버튼 스타일 업데이트 (투명도 및 색상 설정)
+@app.callback(
+    [Output({'type': 'h-pair-btn', 'index': ALL}, 'children'),
+     Output({'type': 'h-pair-btn', 'index': ALL}, 'style'),
+     Output({'type': 'h-seat-btn', 'index': ALL}, 'children'),
+     Output({'type': 'h-seat-btn', 'index': ALL}, 'style')],
+    [Input('history-pair-refs-store', 'data'),
+     Input('history-seat-refs-store', 'data')],
+    [State({'type': 'h-pair-btn', 'index': ALL}, 'id'),
+     State({'type': 'h-seat-btn', 'index': ALL}, 'id'),
+     State('seating-results-store', 'data')] # 이름 추출용
+)
+def update_track_styles_with_icons(pair_sel, seat_sel, pair_ids, seat_ids, seating_results):
+    pair_sel = pair_sel or []
+    seat_sel = seat_sel or []
+    seating_results = seating_results or []
+    
+    # seating_results 타입 정제: dict인 경우 'results' 필드 추출
+    if isinstance(seating_results, dict):
+        seating_results = seating_results.get('results', [])
+    # list가 아니면 빈 리스트로
+    if not isinstance(seating_results, list):
+        seating_results = []
+    
+    # 헬퍼 함수: 상태에 따른 텍스트와 스타일 생성
+    def get_btn_content_and_style(idx, selection_list):
+        is_selected = idx in selection_list
+        # 원래 이름 가져오기
+        orig_name = f"배치 {idx+1}"
+        if isinstance(seating_results, list) and idx < len(seating_results):
+            result_item = seating_results[idx]
+            if isinstance(result_item, dict):
+                orig_name = result_item.get('name', orig_name)
+            
+        # 텍스트: 선택되면 체크표시(✅), 해제되면 빈 사각형(⬜) 혹은 공백
+        label = f"✅ {orig_name}" if is_selected else f"⬜ {orig_name}"
+        
+        # 스타일: 요청하신 #FFFFFF 배경 및 불투명도 적용
+        style = {
+            "width": "120px", "height": "38px", "whiteSpace": "nowrap", 
+            "overflow": "hidden", "textOverflow": "ellipsis",
+            "padding": "6px 10px", "fontSize": "0.85rem",
+            "backgroundColor": "#FFFFFF", "color": "#333333",
+            "border": "1px solid #dee2e6",
+            "opacity": 0.87 if is_selected else 0.38, # 87% vs 38%
+            "textAlign": "left",
+            "transition": "all 0.2s ease"
+        }
+        return label, style
+
+    p_results = [get_btn_content_and_style(bid['index'], pair_sel) for bid in pair_ids]
+    s_results = [get_btn_content_and_style(bid['index'], seat_sel) for bid in seat_ids]
+    
+    # 리스트 풀기 (zip 사용)
+    p_labels, p_styles = zip(*p_results) if p_results else ([], [])
+    s_labels, s_styles = zip(*s_results) if s_results else ([], [])
+        
+    return p_labels, p_styles, s_labels, s_styles
+
 
 
 
@@ -2067,7 +2294,12 @@ def update_seating_results_list(results):
     
     items = []
     for idx, result in enumerate(results):
-        name = result.get('name', f'배치 {idx+1}')
+        # result가 dictionary인지 확인, 아니면 기본값 사용
+        if isinstance(result, dict):
+            name = result.get('name', f'배치 {idx+1}')
+        else:
+            name = f'배치 {idx+1}'
+        
         items.append(
             dbc.Row([
                 dbc.Col([
@@ -2076,13 +2308,15 @@ def update_seating_results_list(results):
                         id={'type': 'load-seating-btn', 'index': idx},
                         color="light",
                         outline=True,
-                        className="w-100 text-start fw-bold",
-                        style={"textDecoration": "none", "padding": "12px"}
+                        # [수정 2] padding 제거하고 h-100(높이 100%) 추가하여 버튼 높이 통일
+                        className="w-100 text-start fw-bold h-100",
+                        style={"textDecoration": "none"}
                     )
                 ], width=10),
                 dbc.Col([
+                    # [수정 2] size="sm" 제거하고 h-100 추가하여 버튼 높이 통일
                     dbc.Button("삭제", id={'type': 'delete-seating-btn', 'index': idx}, 
-                              color="danger", size="sm", className="w-100")
+                              color="danger", className="w-100 h-100")
                 ], width=2),
             ], className="mb-2 g-2")
         )
@@ -2090,8 +2324,8 @@ def update_seating_results_list(results):
 
 # 저장하기 클릭
 @app.callback(
-    Output('seating-results-store', 'data'),
-    Output('seating-save-modal', 'is_open'),
+    # [수정 3] Modal의 'is_open' 상태를 변경하는 Output을 제거하여 저장 시 모달이 닫히지 않게 함
+    Output('seating-results-store', 'data', allow_duplicate=True),
     Input('save-seating-result-btn', 'n_clicks'),
     [State('seating-results-store', 'data'),
      State('assigned-map-store', 'data'),
@@ -2111,17 +2345,16 @@ def save_seating_result(n_clicks, results, current_result, save_name):
         'timestamp': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
     results.append(new_result)
-    return results, False
+    # [수정 3] Modal 상태(False) 반환값 제거, 결과(results)만 반환
+    return results
 
 # 닫기 버튼
 @app.callback(
-    # allow_duplicate=True 를 추가하여 다른 콜백과 충돌하지 않게 설정
     Output('seating-save-modal', 'is_open', allow_duplicate=True), 
     Input('close-seating-modal-btn', 'n_clicks'),
     prevent_initial_call=True
 )
 def close_seating_modal(n_clicks):
-    # 클릭이 발생했을 때만 모달을 닫음 (안전장치)
     if n_clicks:
         return False
     raise PreventUpdate
@@ -2147,21 +2380,9 @@ def download_all_seating_results(n_clicks, results):
     }
     return dict(content=json.dumps(backup_data, ensure_ascii=False, indent=2), filename="자리배치_전체백업.json")
 
-# 파일 불러오기 (숨겨진 Upload 트리거)
-@app.callback(
-    Output('hidden-seating-upload', 'children'),
-    Input('upload-seating-btn', 'n_clicks'),
-    prevent_initial_call=True
-)
-def trigger_file_upload(n_clicks):
-    """파일 불러오기 버튼 클릭 시 파일 선택 다이얼로그 열기"""
-    # 이 콜백은 숨겨진 Upload를 트리거하기 위한 것입니다
-    # 실제 파일 선택은 클라이언트 측에서 처리됩니다
-    return ""
-
 # Upload 컴포넌트에서 파일을 받으면 처리
 @app.callback(
-    Output('seating-results-store', 'data'),
+    Output('seating-results-store', 'data', allow_duplicate=True),
     Input('hidden-seating-upload', 'contents'),
     [State('seating-results-store', 'data'),
      State('hidden-seating-upload', 'filename')],
@@ -2176,20 +2397,16 @@ def handle_seating_file_upload(contents, results, filename):
         raise PreventUpdate
     
     try:
-        # Base64 디코딩
         if ',' in contents:
             contents = contents.split(',')[1]
         decoded = base64.b64decode(contents).decode('utf-8')
         data = json.loads(decoded)
         
         results = results or []
-        # 백업 파일이 전체 형식이면 results만 추출
         if isinstance(data, dict) and 'results' in data:
             results.extend(data['results'])
-        # 단일 항목이면 추가
         elif isinstance(data, dict) and 'data' in data:
             results.append(data)
-        # 리스트이면 모두 추가
         elif isinstance(data, list):
             results.extend(data)
         
@@ -2199,13 +2416,14 @@ def handle_seating_file_upload(contents, results, filename):
 
 # 저장된 배치 불러오기 (토글)
 @app.callback(
-    Output('assigned-map-store', 'data'),
+    Output('assigned-map-store', 'data', allow_duplicate=True),
     Input({'type': 'load-seating-btn', 'index': ALL}, 'n_clicks'),
     State('seating-results-store', 'data'),
     prevent_initial_call=True
 )
 def load_seating_result(n_clicks, results):
     """저장된 배치 결과 불러오기 (토글 버튼 클릭)"""
+    from dash import ctx
     if not any(n_clicks):
         raise PreventUpdate
     
@@ -2217,13 +2435,14 @@ def load_seating_result(n_clicks, results):
 
 # 저장된 배치 삭제
 @app.callback(
-    Output('seating-results-store', 'data'),
+    Output('seating-results-store', 'data', allow_duplicate=True),
     Input({'type': 'delete-seating-btn', 'index': ALL}, 'n_clicks'),
     State('seating-results-store', 'data'),
     prevent_initial_call=True
 )
 def delete_seating_result(n_clicks, results):
     """저장된 배치 결과 삭제"""
+    from dash import ctx
     if not any(n_clicks):
         raise PreventUpdate
     
@@ -2244,10 +2463,69 @@ def toggle_seating_result_modal(n_clicks, is_open):
     """배치 결과 관리 모달 열기/닫기"""
     return not is_open
 
+# --- [파일 업로드 처리] 선택된 파일을 seating-results-store에 저장 ---
+@app.callback(
+    Output('seating-results-store', 'data'),
+    Input('hidden-seating-upload', 'contents'),
+    State('hidden-seating-upload', 'filename'),
+    State('seating-results-store', 'data'),
+    prevent_initial_call=True
+)
+def load_seating_results(contents, filename, current_data):
+    """업로드된 JSON 파일 처리 및 복원"""
+    if not contents or not filename:
+        raise PreventUpdate
+    
+    try:
+        # base64 디코딩
+        content_type, content_string = contents.split(',')
+        decoded = base64.b64decode(content_string)
+        
+        # JSON 파싱
+        data = json.loads(decoded.decode('utf-8'))
+        
+        # 'results' 필드가 있으면 추출 (백업 파일 형식: {'backup_date': ..., 'results': [...]})
+        if isinstance(data, dict) and 'results' in data:
+            data = data['results']
+        
+        # 리스트가 아니면 빈 리스트 반환
+        if not isinstance(data, list):
+            data = []
+        
+        print(f"✓ 파일 로드 성공: {filename}, {len(data)}개 항목")
+        return data
+    except Exception as e:
+        print(f"✗ 파일 로드 오류: {e}")
+        raise PreventUpdate
+
+# --- [파일 불러오기] 불러오기 버튼 클릭 시 숨겨진 Upload 활성화 ---
+app.clientside_callback(
+    """
+    function(n_clicks) {
+        if (n_clicks) {
+            // 숨겨진 Upload 컴포넌트의 input[type="file"]을 찾아 클릭
+            let upload = document.getElementById('hidden-seating-upload');
+            if (upload) {
+                let fileInput = upload.querySelector('input[type="file"]');
+                if (fileInput) {
+                    fileInput.click();
+                }
+            }
+        }
+        return window.dash_clientside.no_update;
+    }
+    """,
+    Output("blank-output", "children", allow_duplicate=True),
+    Input("upload-seating-btn", "n_clicks"),
+    prevent_initial_call=True
+)
+
 # ─────────────────────────────────────────────────────────────
 # [서버 실행] 반드시 파일의 "맨 마지막"에 위치!
 # ─────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    import os
-    debug_mode = os.getenv('DEBUG', 'False') == 'True'
-    app.run(debug=debug_mode, host='0.0.0.0', port=int(os.getenv('PORT', 8050)))
+    # 터미널에 이 문구가 뜨는지 확인하기 위한 테스트용 코드
+    print("🚀🚀🚀 최신 코드 실행 중!!! 🚀🚀🚀")
+    
+    # 무조건 디버그 모드 ON, 나만 접속 가능한 로컬 주소로 고정
+    app.run(debug=True, host='127.0.0.1', port=8050)
