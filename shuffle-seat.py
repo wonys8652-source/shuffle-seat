@@ -2524,8 +2524,6 @@ app.clientside_callback(
 # [서버 실행] 반드시 파일의 "맨 마지막"에 위치!
 # ─────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    # 터미널에 이 문구가 뜨는지 확인하기 위한 테스트용 코드
-    print("🚀🚀🚀 최신 코드 실행 중!!! 🚀🚀🚀")
-    
-    # 무조건 디버그 모드 ON, 나만 접속 가능한 로컬 주소로 고정
-    app.run(debug=True, host='127.0.0.1', port=8050)
+    import os
+    debug_mode = os.getenv('DEBUG', 'False') == 'True'
+    app.run(debug=debug_mode, host='0.0.0.0', port=int(os.getenv('PORT', 8050)))
